@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LibBook Pro - Library Attendance Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --secondary: #10b981;
+            --dark: #1e293b;
+            --light: #f8fafc;
+        }
+        
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            perspective: 1500px;
+            overflow-x: hidden;
+        }
+
+        .shift-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-weight: 600;
+        }
+        
+        .shift-6am-10am { background-color: #e0f2fe; color: #0369a1; }
+        .shift-10am-2pm { background-color: #dcfce7; color: #166534; }
+        .shift-2pm-6pm { background-color: #fef3c7; color: #92400e; }
+        .shift-6pm-10pm { background-color: #ede9fe; color: #5b21b6; }
+        .shift-all-shift { background-color: #d1d5db; color: #1f2937; }
+        
+        .payment-status-paid { background-color: #dcfce7; color: #166534; }
+        .payment-status-unpaid { background-color: #fee2e2; color: #991b1b; }
+
+        .transform-style-3d {
+            transform-style: preserve-3d;
+        }
+
+        .card-3d {
+            transform: translateZ(20px);
+            transition: transform 0.4s ease, box-shadow 0.4s ease;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1), 0 6px 6px rgba(0,0,0,0.1);
+        }
+        .card-3d:hover {
+            transform: translateZ(50px) rotateY(-5deg);
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+        }
+
+        #adminDashboard {
+            transform-style: preserve-3d;
+        }
+        
+        #loginPage {
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+        }
+
+        #appContainer {
+            transition: opacity 0.5s ease-in, transform 0.5s ease-in;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        .animate-shake {
+            animation: shake 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center">
+
+    <!-- Login Page -->
+    <div id="loginPage" class="w-full max-w-md">
+        <div class="bg-white/80 backdrop-blur-sm rounded-xl shadow-2xl p-8 card-3d">
+            <div class="flex justify-center mb-6">
+                 <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/02603cd9-941d-4212-a034-b9932c0042ef.png" alt="LibBook Pro logo" class="h-20 w-20"/>
+            </div>
+            <h2 class="text-center text-3xl font-bold text-gray-800 mb-2">Welcome Back!</h2>
+            <p class="text-center text-gray-600 mb-8">Sign in to manage your library.</p>
+            <form id="loginForm" class="space-y-6">
+                <div>
+                    <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
+                    <div class="mt-1 relative">
+                        <i class="fas fa-user absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input type="text" id="username" required class="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" value="admin">
+                    </div>
+                </div>
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+                     <div class="mt-1 relative">
+                        <i class="fas fa-lock absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input type="password" id="password" required class="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" value="password">
+                    </div>
+                </div>
+                <p id="loginError" class="text-red-500 text-sm hidden">Invalid username or password.</p>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md flex items-center justify-center transition-transform transform hover:scale-105 text-lg font-semibold">
+                    <i class="fas fa-sign-in-alt mr-2"></i>
+                    Login
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Application Container -->
+    <div id="appContainer" class="hidden w-full">
+        <div class="container mx-auto px-4 py-8 max-w-7xl transform-style-3d">
+            <!-- Header -->
+            <header class="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-6 mb-8 card-3d">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <div class="flex items-center mb-4 md:mb-0">
+                        <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/02603cd9-941d-4212-a034-b9932c0042ef.png" alt="LibBook Pro logo" class="h-16 w-16 rounded-lg mr-4 transform transition-all duration-500 hover:rotate-[360deg]"/>
+                        <div>
+                            <h1 class="text-3xl font-bold text-gray-800">LibBook Pro</h1>
+                            <p class="text-gray-600">Library Attendance & Shift Management</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button id="adminViewBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center transition-all duration-300 transform hover:scale-105">
+                            <i class="fas fa-chart-pie mr-2"></i>
+                            <span id="adminViewBtnText">Admin Dashboard</span>
+                        </button>
+                        <div class="relative">
+                            <input type="text" id="searchInput" placeholder="Search candidates..." class="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full md:w-auto">
+                            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        </div>
+                         <button id="logoutBtn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center transition-all duration-300 transform hover:scale-105">
+                            <i class="fas fa-sign-out-alt mr-2"></i>
+                            Logout
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Content Area -->
+            <div id="mainContent">
+                <main class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                    <!-- Registration Form -->
+                    <div class="lg:col-span-1 bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-6 h-fit sticky top-8 card-3d">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-4">Register New Candidate</h2>
+                        <form id="registrationForm" class="space-y-4">
+                            <div>
+                                <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                                <input type="text" id="name" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                            <div>
+                                <label for="mobile" class="block text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
+                                <input type="tel" id="mobile" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="joiningDate" class="block text-sm font-medium text-gray-700 mb-1">Joining Date</label>
+                                    <input type="date" id="joiningDate" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                                <div>
+                                    <label for="expiryDate" class="block text-sm font-medium text-gray-700 mb-1">Expiry Date</label>
+                                    <input type="date" id="expiryDate" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                            </div>
+                             <div>
+                                <label for="feeAmount" class="block text-sm font-medium text-gray-700 mb-1">Fee Amount (₹)</label>
+                                <input type="number" id="feeAmount" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g., 500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Shift Timing</label>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div class="flex items-center"><input type="radio" id="shift1" name="shift" value="6am-10am" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500" checked><label for="shift1" class="ml-2 block text-sm text-gray-700">6am-10am</label></div>
+                                    <div class="flex items-center"><input type="radio" id="shift2" name="shift" value="10am-2pm" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500"><label for="shift2" class="ml-2 block text-sm text-gray-700">10am-2pm</label></div>
+                                    <div class="flex items-center"><input type="radio" id="shift3" name="shift" value="2pm-6pm" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500"><label for="shift3" class="ml-2 block text-sm text-gray-700">2pm-6pm</label></div>
+                                    <div class="flex items-center"><input type="radio" id="shift4" name="shift" value="6pm-10pm" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500"><label for="shift4" class="ml-2 block text-sm text-gray-700">6pm-10pm</label></div>
+                                    <div class="flex items-center col-span-2"><input type="radio" id="shift5" name="shift" value="all-shift" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500"><label for="shift5" class="ml-2 block text-sm text-gray-700">All Shift</label></div>
+                                </div>
+                            </div>
+                            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md flex items-center justify-center transition-transform transform hover:scale-105">
+                                <i class="fas fa-user-plus mr-2"></i>
+                                <span id="registerBtnText">Register Candidate</span>
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <!-- Candidate List -->
+                    <div class="lg:col-span-3 bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-6 card-3d">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 id="listTitle" class="text-xl font-semibold text-gray-800">Candidate Management</h2>
+                        </div>
+                        <div class="border-b border-gray-200 mb-4">
+                            <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                                <button class="tab-button border-b-2 border-indigo-500 text-indigo-600 px-1 py-4 text-sm font-medium" data-tab="all">All</button>
+                                <button class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 px-1 py-4 text-sm font-medium" data-tab="active">Active</button>
+                                <button class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 px-1 py-4 text-sm font-medium" data-tab="expired">Expired</button>
+                                <button class="tab-button border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 px-1 py-4 text-sm font-medium" data-tab="notifications">Notifications</button>
+                            </nav>
+                        </div>
+                        <div id="tableView" class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead id="tableHeader" class="bg-gray-50">
+                                    <!-- Header generated by JS -->
+                                </thead>
+                                <tbody id="tableBody" class="bg-white divide-y divide-gray-200"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </main>
+            </div>
+
+            <!-- Admin Dashboard -->
+            <div id="adminDashboard" class="hidden">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 transform-style-3d">
+                    <div class="bg-white/80 backdrop-blur-sm p-6 rounded-xl shadow-lg card-3d"><h3 class="text-gray-500 font-semibold">Total Candidates</h3><p id="totalCandidatesStat" class="text-4xl font-bold text-indigo-600">0</p></div>
+                    <div class="bg-white/80 backdrop-blur-sm p-6 rounded-xl shadow-lg card-3d"><h3 class="text-gray-500 font-semibold">Active Members</h3><p id="activeCandidatesStat" class="text-4xl font-bold text-green-600">0</p></div>
+                    <div class="bg-white/80 backdrop-blur-sm p-6 rounded-xl shadow-lg card-3d"><h3 class="text-gray-500 font-semibold">Expired Members</h3><p id="expiredCandidatesStat" class="text-4xl font-bold text-red-600">0</p></div>
+                    <div class="bg-white/80 backdrop-blur-sm p-6 rounded-xl shadow-lg card-3d"><h3 class="text-gray-500 font-semibold">Upcoming Renewals</h3><p id="renewalsStat" class="text-4xl font-bold text-yellow-500">0</p></div>
+                    <div class="bg-white/80 backdrop-blur-sm p-6 rounded-xl shadow-lg card-3d"><h3 class="text-gray-500 font-semibold">Total Revenue</h3><p id="revenueStat" class="text-4xl font-bold text-emerald-600">₹0</p></div>
+                    
+                    <div class="lg:col-span-2 h-96 bg-white/80 backdrop-blur-sm p-6 rounded-xl shadow-lg card-3d flex flex-col">
+                        <h3 class="text-xl font-semibold text-gray-800 mb-4">LibBook 3D</h3>
+                        <div id="threejs-container" class="flex-grow rounded-lg overflow-hidden relative -m-6"></div>
+                    </div>
+                    <div class="lg:col-span-3 h-96 bg-white/80 backdrop-blur-sm p-6 rounded-xl shadow-lg card-3d flex flex-col">
+                        <h3 class="text-xl font-semibold text-gray-800 mb-4">Shift Distribution</h3>
+                        <div id="shiftChart" class="flex-grow flex items-center justify-center space-x-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Modal -->
+    <div id="customModal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50 transition-opacity duration-300">
+        <div class="bg-white rounded-lg p-8 max-w-md mx-4 shadow-2xl transform transition-all duration-300 scale-95">
+            <h3 id="modalTitle" class="text-xl font-semibold text-gray-800 mb-4"></h3>
+            <p id="modalMessage" class="text-gray-600 mb-6"></p>
+            <div class="flex justify-end space-x-4">
+                <button id="modalCancelBtn" class="px-4 py-2 text-gray-700 font-medium rounded-lg border border-gray-300 hover:bg-gray-100 transition">Cancel</button>
+                <button id="modalConfirmBtn" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition"></button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Firebase Imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, addDoc, setDoc, deleteDoc, onSnapshot, query, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- THREE.JS SCENE SETUP ---
+        let scene, camera, renderer, book, animationFrameId;
+        function initThreeScene() {
+            const container = document.getElementById('threejs-container');
+            if (!container || renderer) return;
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf1f5f9);
+            camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.z = 5;
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
+            directionalLight.position.set(5, 10, 7.5);
+            scene.add(directionalLight);
+            const bookCoverMaterial = new THREE.MeshStandardMaterial({ color: 0x4f46e5 });
+            const bookPageMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
+            const coverGeometry = new THREE.BoxGeometry(2.5, 3.5, 0.2);
+            const pagesGeometry = new THREE.BoxGeometry(2.4, 3.4, 1);
+            const cover = new THREE.Mesh(coverGeometry, bookCoverMaterial);
+            const pages = new THREE.Mesh(pagesGeometry, bookPageMaterial);
+            pages.position.x = 0.1;
+            book = new THREE.Group();
+            book.add(cover);
+            book.add(pages);
+            scene.add(book);
+            window.addEventListener('resize', onWindowResize, false);
+            animate();
+        }
+        function onWindowResize() {
+            const container = document.getElementById('threejs-container');
+            if (!container || !renderer) return;
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+        function animate() {
+            animationFrameId = requestAnimationFrame(animate);
+            if (book) { book.rotation.y += 0.005; book.rotation.x += 0.002; }
+            if(renderer && scene && camera) renderer.render(scene, camera);
+        }
+        function stopAnimate() { if (animationFrameId) cancelAnimationFrame(animationFrameId); }
+
+
+        // --- APPLICATION LOGIC ---
+        document.addEventListener('DOMContentLoaded', function() {
+            let app, auth, db, candidatesCollectionRef, notificationsCollectionRef;
+            let candidates = [];
+            let unsubscribeCandidates = null;
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            
+            const loginPage = document.getElementById('loginPage');
+            const loginForm = document.getElementById('loginForm');
+            const loginError = document.getElementById('loginError');
+            const appContainer = document.getElementById('appContainer');
+            const logoutBtn = document.getElementById('logoutBtn');
+            const registrationForm = document.getElementById('registrationForm');
+            const listTitle = document.getElementById('listTitle');
+            const tableHeader = document.getElementById('tableHeader');
+            const tableBody = document.getElementById('tableBody');
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const searchInput = document.getElementById('searchInput');
+            const adminViewBtn = document.getElementById('adminViewBtn');
+            const mainContent = document.getElementById('mainContent');
+            const adminDashboard = document.getElementById('adminDashboard');
+            const registerBtnText = document.getElementById('registerBtnText');
+            
+            const customModal = document.getElementById('customModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalMessage = document.getElementById('modalMessage');
+            const modalCancelBtn = document.getElementById('modalCancelBtn');
+            const modalConfirmBtn = document.getElementById('modalConfirmBtn');
+
+            let editingCandidateId = null;
+            let confirmAction = null;
+
+            function showModal({ title, message, confirmText = 'Confirm', cancelText = 'Cancel', onConfirm }) {
+                modalTitle.textContent = title;
+                modalMessage.textContent = message;
+                modalConfirmBtn.textContent = confirmText;
+                modalCancelBtn.textContent = cancelText;
+                customModal.classList.remove('hidden');
+                customModal.classList.add('flex');
+                setTimeout(() => customModal.querySelector('div').classList.add('scale-100'), 10);
+                confirmAction = onConfirm;
+            }
+
+            function hideModal() {
+                const modalDiv = customModal.querySelector('div');
+                modalDiv.classList.remove('scale-100');
+                setTimeout(() => {
+                    customModal.classList.add('hidden');
+                    customModal.classList.remove('flex');
+                    confirmAction = null;
+                }, 300);
+            }
+
+            modalConfirmBtn.addEventListener('click', () => {
+                if (confirmAction) confirmAction();
+                hideModal();
+            });
+            modalCancelBtn.addEventListener('click', hideModal);
+            
+            async function initializeMainApp(user) {
+                const userId = user.uid;
+                candidatesCollectionRef = collection(db, 'artifacts', appId, 'users', userId, 'candidates');
+                notificationsCollectionRef = collection(db, 'artifacts', appId, 'users', userId, 'notifications');
+                
+                unsubscribeCandidates = onSnapshot(query(candidatesCollectionRef), (snapshot) => {
+                    candidates = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    checkAndNotifyExpiry();
+                    renderCurrentView();
+                    if (!adminDashboard.classList.contains('hidden')) {
+                        renderAdminDashboard();
+                    }
+                });
+                
+                setupEventListeners();
+            }
+
+            async function handleLogin(e) {
+                e.preventDefault();
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+
+                if (username === 'admin' && password === 'password') {
+                    loginPage.style.opacity = '0';
+                    setTimeout(() => {
+                        loginPage.classList.add('hidden');
+                        appContainer.classList.remove('hidden');
+                        appContainer.style.opacity = '1';
+                    }, 500);
+
+                    try {
+                        const firebaseConfig = JSON.parse(__firebase_config);
+                        app = initializeApp(firebaseConfig);
+                        auth = getAuth(app);
+                        db = getFirestore(app);
+
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                        
+                        onAuthStateChanged(auth, (user) => {
+                            if (user) initializeMainApp(user);
+                        });
+
+                    } catch (error) {
+                        console.error("Firebase initialization error:", error);
+                        loginError.textContent = "Backend connection failed.";
+                        loginError.classList.remove('hidden');
+                    }
+                } else {
+                    loginError.classList.remove('hidden');
+                    loginForm.parentElement.classList.add('animate-shake');
+                    setTimeout(() => loginForm.parentElement.classList.remove('animate-shake'), 500);
+                }
+            }
+
+            function handleLogout() {
+                if (unsubscribeCandidates) unsubscribeCandidates();
+                if (auth) auth.signOut();
+                
+                appContainer.style.opacity = '0';
+                setTimeout(() => {
+                    appContainer.classList.add('hidden');
+                    loginPage.classList.remove('hidden');
+                    loginPage.style.opacity = '1';
+                    document.getElementById('password').value = '';
+                    loginError.classList.add('hidden');
+                }, 500);
+                stopAnimate();
+            }
+
+            loginForm.addEventListener('submit', handleLogin);
+            logoutBtn.addEventListener('click', handleLogout);
+
+            function setupEventListeners() {
+                registrationForm.addEventListener('submit', handleFormSubmit);
+                searchInput.addEventListener('input', renderCurrentView);
+                tabButtons.forEach(button => {
+                    button.addEventListener('click', function() {
+                        tabButtons.forEach(btn => btn.classList.remove('border-indigo-500', 'text-indigo-600'));
+                        this.classList.add('border-indigo-500', 'text-indigo-600');
+                        renderCurrentView();
+                    });
+                });
+                adminViewBtn.addEventListener('click', toggleAdminView);
+            }
+
+            async function handleFormSubmit(e) {
+                e.preventDefault();
+                const candidateData = {
+                    name: document.getElementById('name').value,
+                    mobile: document.getElementById('mobile').value,
+                    joiningDate: document.getElementById('joiningDate').value,
+                    expiryDate: document.getElementById('expiryDate').value,
+                    shift: document.querySelector('input[name="shift"]:checked').value,
+                    feeAmount: parseFloat(document.getElementById('feeAmount').value) || 0,
+                };
+
+                try {
+                    if (editingCandidateId) {
+                        const docRef = doc(db, candidatesCollectionRef.path, editingCandidateId);
+                        const originalCandidate = candidates.find(c => c.id === editingCandidateId);
+                        if(originalCandidate && originalCandidate.expiryDate !== candidateData.expiryDate) {
+                            candidateData.expiryNotified = false;
+                            candidateData.status = 'active';
+                        }
+                        await setDoc(docRef, candidateData, { merge: true });
+                    } else {
+                        await addDoc(candidatesCollectionRef, { ...candidateData, status: "active", paymentStatus: "unpaid", expiryNotified: false });
+                    }
+                    resetForm();
+                    showModal({ title: `Success!`, message: `Candidate ${candidateData.name} has been ${editingCandidateId ? 'updated' : 'registered'}.`, confirmText: 'OK' });
+                } catch (error) {
+                    console.error("Error saving candidate: ", error);
+                    showModal({ title: 'Error', message: 'Could not save candidate.', confirmText: 'OK' });
+                }
+            }
+            
+            function resetForm() {
+                registrationForm.reset();
+                document.querySelector('input[name="shift"][value="6am-10am"]').checked = true;
+                editingCandidateId = null;
+                registerBtnText.textContent = 'Register Candidate';
+                document.getElementById('name').focus();
+            }
+
+            function renderCurrentView() {
+                const activeTab = document.querySelector('.tab-button.border-indigo-500').dataset.tab;
+                if (activeTab === 'notifications') {
+                    renderNotificationsView();
+                } else {
+                    renderCandidateTable();
+                }
+            }
+
+            function renderCandidateTable() {
+                listTitle.textContent = "Candidate Management";
+                tableHeader.innerHTML = `
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Membership</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                `;
+                const activeTab = document.querySelector('.tab-button.border-indigo-500').dataset.tab;
+                const searchTerm = searchInput.value.toLowerCase();
+                const filteredCandidates = candidates.filter(c => 
+                    ((activeTab === 'all') || (c.status === activeTab)) &&
+                    (c.name.toLowerCase().includes(searchTerm) || c.mobile.includes(searchTerm))
+                );
+                
+                if (filteredCandidates.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-gray-500">No candidates found.</td></tr>`;
+                    return;
+                }
+                
+                tableBody.innerHTML = filteredCandidates.map(c => {
+                    const isExpired = new Date(c.expiryDate) < new Date();
+                    const paymentInfoHtml = c.paymentStatus === 'paid'
+                        ? `<span class="shift-badge payment-status-paid">Paid (₹${c.feeAmount})</span>`
+                        : `<button class="text-xs bg-blue-500 text-white py-1 px-2 rounded hover:bg-blue-600" onclick="window.app.markAsPaid('${c.id}')">Mark Paid (₹${c.feeAmount})</button>`;
+
+                    return `
+                    <tr class="${isExpired ? 'bg-red-50/50' : ''}">
+                        <td class="px-6 py-4">
+                            <div class="font-medium text-gray-900">${c.name}</div>
+                            <div class="text-sm text-gray-500">${c.mobile} | ${formatShift(c.shift)}</div>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600">
+                            ${formatDate(c.joiningDate)} to ${formatDate(c.expiryDate)}
+                            <div class="${isExpired ? 'text-red-600 font-semibold' : 'text-gray-500'}">
+                                ${isExpired ? 'Expired' : `${daysRemaining(c.expiryDate)} days left`}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">${paymentInfoHtml}</td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${c.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${c.status}</span>
+                        </td>
+                        <td class="px-6 py-4 text-right text-sm font-medium">
+                            <button class="text-indigo-600 hover:text-indigo-900 p-2" onclick="window.app.editCandidate('${c.id}')" title="Edit"><i class="fas fa-edit"></i></button>
+                            <button class="text-red-600 hover:text-red-900 p-2" onclick="window.app.deleteCandidate('${c.id}')" title="Delete"><i class="fas fa-trash-alt"></i></button>
+                        </td>
+                    </tr>
+                `}).join('');
+            }
+
+            async function renderNotificationsView() {
+                listTitle.textContent = "Notification Log";
+                tableHeader.innerHTML = `
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Candidate</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Message</th>
+                    </tr>
+                `;
+                tableBody.innerHTML = `<tr><td colspan="3" class="px-6 py-10 text-center text-gray-500">Loading notifications...</td></tr>`;
+
+                const querySnapshot = await getDocs(query(notificationsCollectionRef));
+                const notifications = querySnapshot.docs.map(doc => doc.data()).sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
+
+                if (notifications.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="3" class="px-6 py-10 text-center text-gray-500">No notifications found.</td></tr>`;
+                    return;
+                }
+
+                tableBody.innerHTML = notifications.map(n => `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(n.timestamp.toDate())}</td>
+                        <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">${n.candidateName}</td>
+                        <td class="px-6 py-4 text-sm text-gray-700">${n.message}</td>
+                    </tr>
+                `).join('');
+            }
+
+            function editCandidate(id) {
+                const candidate = candidates.find(c => c.id === id);
+                if (!candidate) return;
+                editingCandidateId = id;
+                document.getElementById('name').value = candidate.name;
+                document.getElementById('mobile').value = candidate.mobile;
+                document.getElementById('joiningDate').value = candidate.joiningDate;
+                document.getElementById('expiryDate').value = candidate.expiryDate;
+                document.getElementById('feeAmount').value = candidate.feeAmount;
+                document.querySelector(`input[name="shift"][value="${candidate.shift}"]`).checked = true;
+                registerBtnText.textContent = 'Update Candidate';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            function deleteCandidate(id) {
+                const candidate = candidates.find(c => c.id === id);
+                showModal({
+                    title: 'Delete Candidate',
+                    message: `Are you sure you want to delete ${candidate.name}?`,
+                    confirmText: 'Delete',
+                    onConfirm: async () => {
+                        try {
+                            await deleteDoc(doc(db, candidatesCollectionRef.path, id));
+                        } catch (error) { console.error("Error deleting document: ", error); }
+                    }
+                });
+            }
+
+            async function markAsPaid(id) {
+                const docRef = doc(db, candidatesCollectionRef.path, id);
+                try {
+                    await setDoc(docRef, { paymentStatus: 'paid' }, { merge: true });
+                } catch(error) {
+                    console.error("Error updating payment status: ", error);
+                    showModal({title: "Error", message: "Could not update payment status.", confirmText: "OK"});
+                }
+            }
+            
+            function toggleAdminView() {
+                const isHidden = mainContent.classList.contains('hidden');
+                if (isHidden) {
+                    mainContent.classList.remove('hidden');
+                    adminDashboard.classList.add('hidden');
+                    adminViewBtn.innerHTML = `<i class="fas fa-chart-pie mr-2"></i> Admin Dashboard`;
+                    stopAnimate();
+                } else {
+                    mainContent.classList.add('hidden');
+                    adminDashboard.classList.remove('hidden');
+                    adminViewBtn.innerHTML = `<i class="fas fa-users mr-2"></i> Candidate View`;
+                    renderAdminDashboard();
+                    initThreeScene();
+                }
+            }
+
+            function renderAdminDashboard() {
+                const active = candidates.filter(c => c.status === 'active').length;
+                const totalRevenue = candidates.filter(c => c.paymentStatus === 'paid').reduce((sum, c) => sum + (c.feeAmount || 0), 0);
+                
+                document.getElementById('totalCandidatesStat').textContent = candidates.length;
+                document.getElementById('activeCandidatesStat').textContent = active;
+                document.getElementById('expiredCandidatesStat').textContent = candidates.length - active;
+                document.getElementById('renewalsStat').textContent = candidates.filter(c => c.status === 'active' && daysRemaining(c.expiryDate) <= 7).length;
+                document.getElementById('revenueStat').textContent = `₹${totalRevenue.toLocaleString('en-IN')}`;
+
+                renderShiftChart();
+            }
+
+            function renderShiftChart() {
+                const shiftCounts = { '6am-10am': 0, '10am-2pm': 0, '2pm-6pm': 0, '6pm-10pm': 0, 'all-shift': 0 };
+                let totalShifts = 0;
+                candidates.forEach(c => {
+                    if (c.status === 'active' && shiftCounts.hasOwnProperty(c.shift)) {
+                        shiftCounts[c.shift]++;
+                        totalShifts++;
+                    }
+                });
+                const chartContainer = document.getElementById('shiftChart');
+                if (totalShifts === 0) {
+                    chartContainer.innerHTML = `<p class="text-gray-500">No active candidates to display.</p>`;
+                    return;
+                }
+                chartContainer.innerHTML = Object.entries(shiftCounts).map(([shift, count]) => {
+                    const percentage = totalShifts > 0 ? ((count / totalShifts) * 100).toFixed(1) : 0;
+                    return `<div class="flex flex-col items-center text-center flex-1">
+                        <div class="relative w-20 h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center" style="background: conic-gradient(var(--c, #4f46e5) ${percentage}%, #e5e7eb 0)">
+                            <div class="absolute w-16 h-16 md:w-20 md:h-20 bg-white/80 rounded-full flex items-center justify-center font-bold text-lg md:text-xl text-gray-700">${percentage}%</div>
+                        </div>
+                        <p class="mt-2 font-semibold text-xs md:text-sm text-gray-800">${formatShift(shift)}</p>
+                        <p class="text-xs text-gray-500">${count} members</p>
+                    </div>`;
+                }).join('');
+                document.querySelectorAll('#shiftChart > div').forEach((div, i) => {
+                    const shift = Object.keys(shiftCounts)[i];
+                    const color = window.getComputedStyle(document.querySelector(`.${getShiftClass(shift)}`)).color;
+                    div.querySelector('.relative').style.setProperty('--c', color);
+                });
+            }
+
+            async function checkAndNotifyExpiry() {
+                const today = new Date();
+                for (const candidate of candidates) {
+                    const expiryDate = new Date(candidate.expiryDate);
+                    if (expiryDate < today && candidate.status !== 'expired' && !candidate.expiryNotified) {
+                        const docRef = doc(db, candidatesCollectionRef.path, candidate.id);
+                        await setDoc(docRef, { status: 'expired', expiryNotified: true }, { merge: true });
+                        
+                        // Log the notification
+                        await addDoc(notificationsCollectionRef, {
+                            candidateName: candidate.name,
+                            message: `Membership expired on ${formatDate(candidate.expiryDate)}. Automatic notification sent.`,
+                            timestamp: serverTimestamp()
+                        });
+                    }
+                }
+            }
+
+            function formatDate(d) { 
+                if (d && d.toDate) { d = d.toDate(); } // Convert Firestore timestamp to Date
+                return new Date(d).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' }); 
+            }
+            function daysRemaining(d) { return Math.max(0, Math.ceil((new Date(d) - new Date()) / 864e5)); }
+            function formatShift(s) { return (s || '').replace('all-shift', 'All Shift').replace('-', ' - ').toUpperCase(); }
+            function getShiftClass(s) { return `shift-${s || ''}`; }
+            
+            window.app = { editCandidate, deleteCandidate, markAsPaid };
+        });
+    </script>
+</body>
+</html>
+
